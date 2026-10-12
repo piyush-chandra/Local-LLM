@@ -249,6 +249,18 @@ export default function Home() {
         signal: controller.signal,
       });
 
+      if (!res.ok) {
+        let detail = `Server error ${res.status}`;
+        try {
+          const ej = await res.json();
+          if (ej && typeof ej.error === "string") detail = ej.error;
+        } catch { /* keep default */ }
+        setMessages([...newMessages, { role: "assistant", content: `⚠️ ${detail}`, reasoning: "" }]);
+        setLoading(false);
+        setIsGenerating(false);
+        return;
+      }
+
       if (!res.body) throw new Error("No response body");
 
       const reader = res.body.getReader();
@@ -308,6 +320,14 @@ export default function Home() {
             // Incomplete chunk — continue buffering
           }
         }
+      }
+      if (!content && !reasoning) {
+        content = "⚠️ Model returned an empty response.";
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content, reasoning };
+          return updated;
+        });
       }
       setLoading(false);
       setIsGenerating(false);
